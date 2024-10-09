@@ -1,6 +1,7 @@
 package com.manodev.eventostec.api.controller;
 
 import com.manodev.eventostec.api.domain.event.Event;
+import com.manodev.eventostec.api.domain.event.EventDetailsDTO;
 import com.manodev.eventostec.api.domain.event.EventRequestDTO;
 import com.manodev.eventostec.api.domain.event.EventResponseDTO;
 import com.manodev.eventostec.api.service.EventService;
@@ -12,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/event")
@@ -34,6 +36,12 @@ public class EventController {
         return ResponseEntity.ok(newEvent);
     }
 
+    @GetMapping("/{eventId}")
+    public ResponseEntity<EventDetailsDTO> getEventDetails(@PathVariable UUID eventId) {
+        EventDetailsDTO eventDetailsDTO = eventService.getEventDetails(eventId);
+        return ResponseEntity.ok(eventDetailsDTO);
+    }
+
     @GetMapping
     public ResponseEntity<List<EventResponseDTO>> getEvents(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         List<EventResponseDTO> allEvents = this.eventService.getUpcomingEvents(page, size);
@@ -50,4 +58,6 @@ public class EventController {
         List<EventResponseDTO> events = eventService.getFilteredEvents(page, size,city, uf, startDate, endDate);
         return ResponseEntity.ok(events);
     }
+
+
 }

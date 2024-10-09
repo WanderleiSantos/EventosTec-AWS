@@ -1,9 +1,8 @@
 package com.manodev.eventostec.api.service;
 
-import com.manodev.eventostec.api.domain.event.Event;
-import com.manodev.eventostec.api.domain.event.EventAddressProjection;
-import com.manodev.eventostec.api.domain.event.EventRequestDTO;
-import com.manodev.eventostec.api.domain.event.EventResponseDTO;
+import com.manodev.eventostec.api.domain.address.Address;
+import com.manodev.eventostec.api.domain.coupon.Coupon;
+import com.manodev.eventostec.api.domain.event.*;
 import com.manodev.eventostec.api.repositories.EventRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +19,9 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -36,6 +37,8 @@ public class EventService {
 
     @Autowired
     private S3Client s3Client;
+    @Autowired
+    private CouponService couponService;
 
     public Event createEvent(EventRequestDTO data) {
         String imgUrl = null;
@@ -111,15 +114,37 @@ public class EventService {
 
         Page<EventAddressProjection> eventsPage = this.repository.findFilteredEvents(city, uf, startDate, endDate, pageable);
         return eventsPage.map(event -> new EventResponseDTO(
-                        event.getId(),
-                        event.getTitle(),
-                        event.getDescription(),
-                        event.getDate(),
-                        event.getCity() != null ? event.getCity() : "",
-                        event.getUf() != null ? event.getUf() : "",
-                        event.getRemote(),
-                        event.getEventUrl(),
-                        event.getImgUrl()
-                )).stream().toList();
+                event.getId(),
+                event.getTitle(),
+                event.getDescription(),
+                event.getDate(),
+                event.getCity() != null ? event.getCity() : "",
+                event.getUf() != null ? event.getUf() : "",
+                event.getRemote(),
+                event.getEventUrl(),
+                event.getImgUrl()
+        )).stream().toList();
+    }
+
+    public EventDetailsDTO getEventDetails(UUID eventId) {
+        Event event = repository.findById(eventId).orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Optional<Address> address = addressService.findByEventId(eventId);
+
+        List<Coupon> coupons = couponService.consultCoupons(eventId, new Date());
+
+        List<EventDetailsDTO.CouponDTO> couponDTOs = coupons.stream().map(coupon -> new EventDetailsDTO.CouponDTO(
+                coupon.getCode(), coupon.getDiscount(), coupon.getValid()
+        )).collect(Collectors.toList());
+
+        return new EventDetailsDTO(
+                event.getId(),
+                event.getTitle(),
+                event.getDescription(),
+                event.getDate(),
+                address.isPresent() ? address.get().getCity() : "",
+                address.isPresent() ? address.get().getUf() : "",
+                event.getImgUrl(),
+                event.getEventUrl(),
+                couponDTOs);
     }
 }
